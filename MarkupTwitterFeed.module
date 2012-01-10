@@ -132,11 +132,12 @@ class MarkupTwitterFeed extends WireData implements Module {
 
 		$text = htmlspecialchars($text);
 
-		if($this->options['linkUrls'] && strpos($text, "http") !== false && preg_match_all('{(https?://([^ ]+|$))}i', $text, $matches)) {
-			foreach($matches[0] as $key => $match) {
-				// $rel = strpos($matches[0], 'tripsite.com') ? '' : " rel='nofollow'";
-				$link = str_replace('{href}', $match, $this->options['listItemLinkOpen']) . $match . $this->options['listItemLinkClose']; 
-				$text = str_replace($match, $link, $text);
+		if($this->options['linkUrls'] && strpos($text, "http") !== false && preg_match_all('{(https?://([^ ]+|$))}is', $text, $matches)) {
+			foreach($matches[1] as $key => $href) {
+				$href = trim($href, '.');
+				if(substr_count($href, '.') < 1) continue;
+				$replacement = str_replace('{href}', $href, $this->options['listItemLinkOpen']) . $href . $this->options['listItemLinkClose'];
+				$text = str_replace($href, $replacement, $text);
 			}
 		}
 
