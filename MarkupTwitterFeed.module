@@ -132,7 +132,7 @@ class MarkupTwitterFeed extends WireData implements Module {
 
 		$text = htmlspecialchars($text);
 
-		if($this->options['linkUrls'] && strpos($text, "http") !== false && preg_match_all('{(https?://([^ ]+|$))}is', $text, $matches)) {
+		if($this->options['linkUrls'] && strpos($text, "http") !== false && preg_match_all('{(https?://([^\s\r\n]+|$))}i', $text, $matches)) {
 			foreach($matches[1] as $key => $href) {
 				$href = trim($href, '.');
 				if(substr_count($href, '.') < 1) continue;
