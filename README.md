@@ -7,6 +7,12 @@ Use this to show a Twitter feed on your ProcessWire-powered website.
 This module uses the [tmhOAuth](https://github.com/themattharris/tmhOAuth) library by @themattharris.
 This library is included with the MarkupTwitterFeed module files.
 
+## Requirements
+
+- ProcessWire 2.2.9 or newer
+- PHP 5.3 or newer 
+- PHP must have CURL and hash_hmac support (already present in most hosting environments)
+
 ## To Install
 
 - Place the module files in `/site/modules/MarkupTwitterFeed/`
@@ -16,6 +22,9 @@ This library is included with the MarkupTwitterFeed module files.
    - Once created, copy and paste the settings to the module configuration.
 
 ## To Upgrade
+
+*Before upgrading, please note that this module now requires PHP 5.3 or newer. If you are running PHP 5.2,
+this module likely will not work.* 
 
 If you already have the old MarkupTwitterFeed module installed, you do not need to uninstall it unless
 it is installed in some location other than `/site/modules/MarkupTwitterFeed/MarkupTwitterFeed.module`.
