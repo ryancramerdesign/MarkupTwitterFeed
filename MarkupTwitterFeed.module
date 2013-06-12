@@ -58,7 +58,7 @@ class MarkupTwitterFeed extends WireData implements Module, ConfigurableModule {
 	 */
 	public function __construct() {
 		$this->cachePath = $this->config->paths->cache . $this->className() . '/';
-		$this->options['dateFormat'] = $this->_('F j h:i a'); // Translatable date format
+		$this->options['dateFormat'] = $this->_('F j g:i a'); // Translatable date format
 	}
 
 	/**
@@ -165,10 +165,6 @@ class MarkupTwitterFeed extends WireData implements Module, ConfigurableModule {
 			// throw away first argument which contains the old RSS URL, no longer used
 			$rssUrl = $options; 
 			$options = $options2; 
-			if($rssUrl) {
-				$oldCacheFile = $this->cachePath . md5($rssUrl) . '.xml.cache';
-				if(is_file($oldCacheFile)) unlink($oldCacheFile); // used by previous versions, no longer needed
-			}
 		}
 
 		$out = '';
@@ -177,7 +173,7 @@ class MarkupTwitterFeed extends WireData implements Module, ConfigurableModule {
 		$cacheFile = $this->cachePath . md5(print_r($options, true)) . '.json.cache';
 		$saveCache = false;
 
-                if(!is_file($cacheFile) || time() - filemtime($cacheFile) > $this->options['cacheSeconds']) {
+                if(!is_file($cacheFile) || time() - filemtime($cacheFile) > $options['cacheSeconds']) {
 			$json = $this->getTwitterJSON($options);
 			$saveCache = true; 
 		} else {
@@ -200,14 +196,14 @@ class MarkupTwitterFeed extends WireData implements Module, ConfigurableModule {
 		}
 
 		$n = 0;
-		$out .= $this->options['listOpen']; 
+		$out .= $options['listOpen']; 
 
 		foreach($data as $item) {
 			$out .= $this->renderItem($item, $options); 
-			if(++$n >= $this->options['limit']) break;
+			if(++$n >= $options['limit']) break;
 		}
 
-		$out .= $this->options['listClose']; 
+		$out .= $options['listClose']; 
 
 		return $out;
 	}
