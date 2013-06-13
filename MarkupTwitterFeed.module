@@ -143,7 +143,8 @@ class MarkupTwitterFeed extends WireData implements Module, ConfigurableModule {
 		$code = $oAuth->request('GET', $oAuth->url("1.1/statuses/$options[timeline]", 'json'), $params);
 
 		if($code != 200) {
-			$this->error(htmlentities($oAuth->response['response']), Notice::log); 
+			if(wire('log')) wire('log')->error($oAuth->response['response']); // 2.3.1+
+			$this->error(htmlentities($oAuth->response['response']), Notice::debug); 
 			return false;
 		}
 
@@ -168,7 +169,7 @@ class MarkupTwitterFeed extends WireData implements Module, ConfigurableModule {
 		}
 
 		$out = '';
-		$error = $this->_('Error retrieving Twitter status.'); 
+		$error = $this->_('Error retrieving Twitter status'); 
 		$options = array_merge($this->options, $options); 
 		$cacheFile = $this->cachePath . md5(print_r($options, true)) . '.json.cache';
 		$saveCache = false;
@@ -185,7 +186,8 @@ class MarkupTwitterFeed extends WireData implements Module, ConfigurableModule {
 		$data = json_decode($json, true); 
 
 		if(!$data) {
-			$this->error($error . ': ' . htmlentities(json_last_error()), Notice::log); 
+			if(wire('log')) wire('log')->error("$error: " . htmlentities(json_last_error())); 
+			if(wire('config')->debug) $error .= ": " . json_last_error(); 
 			return $error; 
 		}
 
