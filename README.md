@@ -66,6 +66,19 @@ $t->showDate = 'before';
 echo $t->render();
 ```
 
+**Or you can iterate the feed rather to generate your own markup...**
+Note that when doing this, all of the $options that modify output are no longer applicable, 
+as you will be given the data exactly as it is from Twitter. This will likely change in the
+next version. But for now, if you take this route, you should avoid setting any options that
+would affect the output, so that you will not be affected by changes in the next version.
+```
+$t = $modules->get('MarkupTwitterFeed');
+$t->limit = 3; 
+foreach($t as $item) {
+  echo "<p>$item[text]<br /><span class='date'>$item[created_at]</span></p>";
+}
+```
+
 ## All available options
 
 Default values are shown below. 
@@ -73,7 +86,8 @@ Default values are shown below.
 ```
 $t->limit = 3;                  // max items to show
 $t->cacheSeconds = 3600;        // seconds to cache the feed (3600 = 1 hour)*
-$t->dateFormat = 'F j h:i a';   // PHP date() or strftime() format for date field: December 4, 2013 1:17 pm
+$t->dateFormat = 'F j g:i a';   // PHP date() or strftime() format for date field: December 4, 2013 1:17 pm
+$t->dateFormat = 'relative';	// Displays relative time, i.e. "10 minutes ago", etc. 
 $t->linkUrls = true;            // should URLs be linked?
 $t->showHashTags = true;        // show hash tags in the tweets?
 $t->showAtTags = true;          // show @user tags in the tweets?

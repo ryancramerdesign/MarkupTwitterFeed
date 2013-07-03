@@ -1,12 +1,12 @@
 <?php
 
-class MarkupTwitterFeed extends WireData implements Module, ConfigurableModule {
+class MarkupTwitterFeed extends WireData implements Module, ConfigurableModule, IteratorAggregate {
 
 	public static function getModuleInfo() {
 		return array(
 			'title' => 'Twitter Feed Markup', 
 			'summary' => 'Module that generates a list (UL) for a Twitter feed. Usage: $t = new MarkupTwitterFeed(); echo $t->render(); or $t->render(array $options);', 
-			'version' => 200, 
+			'version' => 201, 
 			'singular' => true, 
 			'autoload' => false, 
 			);
@@ -19,7 +19,7 @@ class MarkupTwitterFeed extends WireData implements Module, ConfigurableModule {
 	protected $options = array(
 		'limit' => 3, 
 		'cacheSeconds' => 600, // 10 minutes
-		'dateFormat' => "F j g:i a", 
+		'dateFormat' => "F j g:i a", // PHP date() or strftime() format, or "relative" to display relative time.
 		'linkUrls' => true, 
 		'showHashTags' => true, 
 		'showAtTags' => true, 
@@ -40,7 +40,7 @@ class MarkupTwitterFeed extends WireData implements Module, ConfigurableModule {
 		'listItemClose' => "</li>",
 		'listItemDateOpen' => " <span class='date'>", 
 		'listItemDateClose' => "</span>", 
-		'listItemLinkOpen' => "<a href='{href}'>", 
+		'listItemLinkOpen' => "<a rel='nofollow' href='{href}'>", 
 		'listItemLinkClose' => "</a>", 
 		); 
 
@@ -152,6 +152,49 @@ class MarkupTwitterFeed extends WireData implements Module, ConfigurableModule {
 	}
 
 	/**
+	 * Get array of Twitter data, whether from cache or from JSON feed
+	 *
+	 @ @param array $options
+	 * @return bool|array Returns boolean false on failure, array of data on success. 
+	 *
+	 */
+	protected function getData(array $options) {
+
+		$options = array_merge($this->options, $options); 
+		$cacheFile = $this->cachePath . md5(print_r($options, true)) . '.json.cache';
+		$saveCache = false;
+
+                if(!is_file($cacheFile) || time() - filemtime($cacheFile) > $options['cacheSeconds']) {
+			$json = $this->getTwitterJSON($options);
+			$saveCache = true; 
+		} else {
+			$json = file_get_contents($cacheFile); 
+		}
+
+		if($json === false) return false;
+
+		$out = json_decode($json, true); 
+
+		if($out && $saveCache) {
+			if(is_dir($this->cachePath)) wireRmdir($this->cachePath, true); 
+			$this->createCachePath();
+			file_put_contents($cacheFile, $json, LOCK_EX);
+		}
+
+		return $out; 
+
+	}
+
+	/**
+	 * For IteratorAggregate interface
+	 *
+	 */
+	public function getIterator() {
+		$data = $this->getData(array()); 
+		return new ArrayObject($data); 
+	}
+
+	/**
 	 * Render a Twitter feed
 	 *
 	 * Returns markup of Twitter feed on success or error message string on error.
@@ -170,31 +213,17 @@ class MarkupTwitterFeed extends WireData implements Module, ConfigurableModule {
 
 		$out = '';
 		$error = $this->_('Error retrieving Twitter status'); 
+		$data = $this->getData($options);
 		$options = array_merge($this->options, $options); 
-		$cacheFile = $this->cachePath . md5(print_r($options, true)) . '.json.cache';
-		$saveCache = false;
 
-                if(!is_file($cacheFile) || time() - filemtime($cacheFile) > $options['cacheSeconds']) {
-			$json = $this->getTwitterJSON($options);
-			$saveCache = true; 
-		} else {
-			$json = file_get_contents($cacheFile); 
-		}
-
-		if($json === false) return $error;
-
-		$data = json_decode($json, true); 
-
-		if(!$data) {
-			if(wire('log')) wire('log')->error("$error: " . htmlentities(json_last_error())); 
-			if(wire('config')->debug) $error .= ": " . json_last_error(); 
+		if($data === false) {
+			$errorCode = json_last_error();
+			if(wire('log')) wire('log')->error("$error: $errorCode"); 
+			if(wire('config')->debug) $error .= ": " . $errorCode;
 			return $error; 
-		}
 
-		if($saveCache) {
-			if(is_dir($this->cachePath)) wireRmdir($this->cachePath, true); 
-			$this->createCachePath();
-			file_put_contents($cacheFile, $json, LOCK_EX);
+		} else if(!count($data)) {
+			return $this->_('Nothing to show'); 
 		}
 
 		$n = 0;
@@ -237,7 +266,8 @@ class MarkupTwitterFeed extends WireData implements Module, ConfigurableModule {
 
 		if($options['showDate']) {
 			$date = strtotime($item['created_at']);
-			if(strpos($options['dateFormat'], '%') !== false) $date = strftime($options['dateFormat'], $date); 
+			if($options['dateFormat'] == 'relative') $date = wireRelativeTimeStr($date);
+				else if(strpos($options['dateFormat'], '%') !== false) $date = strftime($options['dateFormat'], $date); 
 				else $date = date($options['dateFormat'], $date);
 			$dateOut = $options['listItemDateOpen'] . $date . $options['listItemDateClose']; 
 			if($options['showDate'] == 'before') {
