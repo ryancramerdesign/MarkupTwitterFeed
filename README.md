@@ -18,7 +18,7 @@ This library is included with the MarkupTwitterFeed module files.
 - Place the module files in `/site/modules/MarkupTwitterFeed/`
 - In ProcessWire admin, go to *Modules > Check for new modules* and click *install* for *Twitter Feed Markup*.
 - Note the Twitter API settings on the settings screen.
-   - To obtain these, create a new Twitter application at: [https://dev.twitter.com/apps](dev.twitter.com/apps).
+   - To obtain these, create a new Twitter application at: [dev.twitter.com/apps](https://dev.twitter.com/apps).
    - Once created, copy and paste the settings to the module configuration.
 
 ## To Upgrade
