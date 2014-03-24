@@ -100,6 +100,7 @@ $t->consumerKey = '';           // Twitter API consumer key*
 $t->consumerSecret = '';        // Twitter API consumer secret*
 $t->userToken = '';             // Twitter API access/user token*
 $t->userSecret = '';            // Twitter API access/user secret*
+$t->hashtag = ''................// show only tweets that contain a certain hashtag
 
 // generated markup options:
 $t->listOpen = "<ul class='MarkupTwitterFeed'>";
