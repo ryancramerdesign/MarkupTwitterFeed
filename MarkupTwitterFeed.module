@@ -245,10 +245,20 @@ class MarkupTwitterFeed extends WireData implements Module, ConfigurableModule, 
 		return $out;
 	}
 
+	/**
+	 * Get the data array
+	 * @param  array  $options
+	 * @return array          the data array
+	 */
 	public function getDataArray($options = array()) {
 		return $this->getData($options);
 	}
 
+	/**
+	 * Create a data array that only contains tweets with a certain hashtag
+	 * @param  array  $data the data array
+	 * @return array       the filtered data array
+	 */
 	protected function filterByHastag(array $data) {
 		$filteredData = array();
 		$hashtag = $this->options['hashtag'];
