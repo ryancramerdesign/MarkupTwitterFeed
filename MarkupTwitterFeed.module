@@ -42,6 +42,7 @@ class MarkupTwitterFeed extends WireData implements Module, ConfigurableModule, 
 		'listItemDateClose' => "</span>", 
 		'listItemLinkOpen' => "<a rel='nofollow' href='{href}'>", 
 		'listItemLinkClose' => "</a>", 
+		'hashtag' => "",
 		); 
 
 	/**
@@ -237,6 +238,10 @@ class MarkupTwitterFeed extends WireData implements Module, ConfigurableModule, 
 		$out .= $options['listClose']; 
 
 		return $out;
+	}
+
+	public function getDataArray($options) {
+		return $this->getData($options);
 	}
 
 	/**
