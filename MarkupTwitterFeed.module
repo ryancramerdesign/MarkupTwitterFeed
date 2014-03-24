@@ -165,7 +165,7 @@ class MarkupTwitterFeed extends WireData implements Module, ConfigurableModule, 
 		$cacheFile = $this->cachePath . md5(print_r($options, true)) . '.json.cache';
 		$saveCache = false;
 
-				if(!is_file($cacheFile) || time() - filemtime($cacheFile) > $options['cacheSeconds']) {
+		if(!is_file($cacheFile) || time() - filemtime($cacheFile) > $options['cacheSeconds']) {
 			$json = $this->getTwitterJSON($options);
 			$saveCache = true; 
 		} else {
@@ -174,7 +174,12 @@ class MarkupTwitterFeed extends WireData implements Module, ConfigurableModule, 
 
 		if($json === false) return false;
 
-		$out = json_decode($json, true); 
+		if ($options['hashtag'] !== '') {
+			$out = filterByHastag(json_decode($json, true));
+			$json = json_encode($out);
+		} else {
+			$out = json_decode($json, true); 
+		}
 
 		if($out && $saveCache) {
 			if(is_dir($this->cachePath)) wireRmdir($this->cachePath, true); 
@@ -242,6 +247,16 @@ class MarkupTwitterFeed extends WireData implements Module, ConfigurableModule, 
 
 	public function getDataArray($options = array()) {
 		return $this->getData($options);
+	}
+
+	protected function filterByHastag(array $data) {
+		$filteredData = array();
+		foreach ($data as $key => $item) {
+			if (strpos($item->text, $options['hashtag']) > 0) {
+				$filteredData[$key] = $item;
+			}
+		}
+		return $filteredData;
 	}
 
 	/**
