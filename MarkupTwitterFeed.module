@@ -164,7 +164,7 @@ class MarkupTwitterFeed extends WireData implements Module, ConfigurableModule, 
 		$cacheFile = $this->cachePath . md5(print_r($options, true)) . '.json.cache';
 		$saveCache = false;
 
-                if(!is_file($cacheFile) || time() - filemtime($cacheFile) > $options['cacheSeconds']) {
+				if(!is_file($cacheFile) || time() - filemtime($cacheFile) > $options['cacheSeconds']) {
 			$json = $this->getTwitterJSON($options);
 			$saveCache = true; 
 		} else {
@@ -199,7 +199,7 @@ class MarkupTwitterFeed extends WireData implements Module, ConfigurableModule, 
 	 *
 	 * Returns markup of Twitter feed on success or error message string on error.
 	 * For more error details, see your log file at /site/assets/logs/errors.txt
- 	 *
+	 *
 	 * @return string
 	 *
 	 */
@@ -308,7 +308,7 @@ class MarkupTwitterFeed extends WireData implements Module, ConfigurableModule, 
 			$f->required = true; 
 			$f->columnWidth = 50;
 			if(isset($data[$name])) $f->attr('value', $data[$name]); 
-			$form->add($f); 	
+			$form->add($f); 
 		}
 
 		$wrap->add($form); 
@@ -319,6 +319,14 @@ class MarkupTwitterFeed extends WireData implements Module, ConfigurableModule, 
 		$f->description = __('Enter the number of seconds.');
 		$f->notes = __('Examples: 60=1 minute, 600=10 minutes, 3600=1 hour, 14400=4 hours, 86500=1 day.'); 
 		$f->attr('value', isset($data['cacheTime']) ? (int) $data['cacheTime'] : 600); 
+		$wrap->add($f); 
+
+		$f = wire('modules')->get('InputfieldText'); 
+		$f->attr('name', 'hashtag'); 
+		$f->label = __('Filter by hashtag'); 
+		$f->description = __('If you provide a hashtag, only tweets containing this hastag will be displayed.');
+		$f->notes = __('Leave this field empty if you don\'t want to filter by hashtag.'); 
+		$f->attr('value', isset($data['hashtag']) ? $data['hashtag'] : ''); 
 		$wrap->add($f); 
 
 		return $wrap;
