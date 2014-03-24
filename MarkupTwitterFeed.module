@@ -175,7 +175,7 @@ class MarkupTwitterFeed extends WireData implements Module, ConfigurableModule, 
 		if($json === false) return false;
 
 		if ($options['hashtag'] !== '') {
-			$out = filterByHastag(json_decode($json, true));
+			$out = $this->filterByHastag(json_decode($json, true));
 			$json = json_encode($out);
 		} else {
 			$out = json_decode($json, true); 
