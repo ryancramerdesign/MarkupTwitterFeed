@@ -240,7 +240,7 @@ class MarkupTwitterFeed extends WireData implements Module, ConfigurableModule, 
 		return $out;
 	}
 
-	public function getDataArray($options) {
+	public function getDataArray($options = array()) {
 		return $this->getData($options);
 	}
 
