@@ -252,7 +252,7 @@ class MarkupTwitterFeed extends WireData implements Module, ConfigurableModule, 
 	protected function filterByHastag(array $data) {
 		$filteredData = array();
 		foreach ($data as $item) {
-			if (strpos($item->text, $this->options['hashtag']) > 0) {
+			if (strpos($item['text'], $this->options['hashtag']) > 0) {
 				$filteredData[] = $item;
 			}
 		}
