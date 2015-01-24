@@ -122,7 +122,6 @@ class MarkupTwitterFeed extends WireData implements Module, ConfigurableModule, 
 
 		if(!class_exists('tmhOAuth', false)) {
 			require_once(wire('config')->paths->MarkupTwitterFeed . 'tmhOAuth/tmhOAuth.php');
-			require_once(wire('config')->paths->MarkupTwitterFeed . 'tmhOAuth/tmhUtilities.php');
 		}
 
 		$oAuth = new tmhOAuth(array(
@@ -163,11 +162,15 @@ class MarkupTwitterFeed extends WireData implements Module, ConfigurableModule, 
 		$options = array_merge($this->options, $options); 
 		$cacheFile = $this->cachePath . md5(print_r($options, true)) . '.json.cache';
 		$saveCache = false;
-
-                if(!is_file($cacheFile) || time() - filemtime($cacheFile) > $options['cacheSeconds']) {
+		$cacheFileExists = is_file($cacheFile);
+		$json = false;
+		
+        if(!$cacheFileExists || time() - filemtime($cacheFile) > $options['cacheSeconds']) {
 			$json = $this->getTwitterJSON($options);
 			$saveCache = true; 
-		} else {
+		} 
+		
+		if (($json === false) && $cacheFileExists) {
 			$json = file_get_contents($cacheFile); 
 		}
 
@@ -191,6 +194,7 @@ class MarkupTwitterFeed extends WireData implements Module, ConfigurableModule, 
 	 */
 	public function getIterator() {
 		$data = $this->getData(array()); 
+		if ($data === false) $data = array();
 		return new ArrayObject($data); 
 	}
 
@@ -243,8 +247,10 @@ class MarkupTwitterFeed extends WireData implements Module, ConfigurableModule, 
 	 * Render an individual tweet
 	 *
 	 */
-	protected function renderItem(array $item, array $options) {
-
+	public function renderItem(array $item, array $options = array()) {
+		
+		$options = array_merge($this->options, $options); 
+		
 		$text = $item['text'];
 		if(!$options['showHashTags']) $text = preg_replace('/\#([^\s]+|$)\s*/', '', $text); 
 		if(!$options['showAtTags']) $text = preg_replace('/@([^\s]+|$)\s*/', '', $text); 
@@ -314,11 +320,11 @@ class MarkupTwitterFeed extends WireData implements Module, ConfigurableModule, 
 		$wrap->add($form); 
 
 		$f = wire('modules')->get('InputfieldInteger'); 
-		$f->attr('name', 'cacheTime'); 
+		$f->attr('name', 'cacheSeconds'); 
 		$f->label = __('How often to check for new tweets'); 
 		$f->description = __('Enter the number of seconds.');
 		$f->notes = __('Examples: 60=1 minute, 600=10 minutes, 3600=1 hour, 14400=4 hours, 86500=1 day.'); 
-		$f->attr('value', isset($data['cacheTime']) ? (int) $data['cacheTime'] : 600); 
+		$f->attr('value', isset($data['cacheSeconds']) ? (int) $data['cacheSeconds'] : 600); 
 		$wrap->add($f); 
 
 		return $wrap;
