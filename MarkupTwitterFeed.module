@@ -6,7 +6,7 @@ class MarkupTwitterFeed extends WireData implements Module, ConfigurableModule, 
 		return array(
 			'title' => 'Twitter Feed Markup', 
 			'summary' => 'Module that generates a list (UL) for a Twitter feed. Usage: $t = new MarkupTwitterFeed(); echo $t->render(); or $t->render(array $options);', 
-			'version' => 201, 
+			'version' => 204, 
 			'singular' => true, 
 			'autoload' => false, 
 			);
@@ -20,10 +20,10 @@ class MarkupTwitterFeed extends WireData implements Module, ConfigurableModule, 
 		'limit' => 3, 
 		'cacheSeconds' => 600, // 10 minutes
 		'dateFormat' => "F j g:i a", // PHP date() or strftime() format, or "relative" to display relative time.
+		'preserveLineBreaks' => false,
 		'linkUrls' => true, 
 		'showHashTags' => true, 
 		'showAtTags' => true, 
-		'showName' => true, // deprecated, no longer applicable
 		'showDate' => 'after', // should be 'before', 'after', or blank to not show
 		'showReplies' => false, // set to true if you want replies included in the timeline
 		'showRetweets' => false, // set to true if you want retweets included in the timeline
@@ -38,10 +38,15 @@ class MarkupTwitterFeed extends WireData implements Module, ConfigurableModule, 
 		'listClose' => "\n</ul>",
 		'listItemOpen' => "\n\t<li>",
 		'listItemClose' => "</li>",
-		'listItemDateOpen' => " <span class='date'>", 
-		'listItemDateClose' => "</span>", 
-		'listItemLinkOpen' => "<a rel='nofollow' href='{href}'>", 
-		'listItemLinkClose' => "</a>", 
+		'listItemText' => "{text}",
+		'listItemDate' => " <span class='date'>{date}</span>", 
+		'listItemLink' => "<a rel='nofollow' href='{href}'>{url}</a>", 
+		'listItemPhoto' => "<img src='{src}' title='{title}'>",
+		'listItemVideo' => "{video_tag}",
+		'listItemRetweetText' => "<i class='fa fa-retweet'></i> <span class='tweet-author'><img src='{author_icon_url}'>@{author}</span> <div class='tweet-text'>{text}</div>",
+		
+		'videoAttributes' => "autoplay loop muted",
+		'preserveLineBreaks' => true,
 		); 
 
 	/**
@@ -134,7 +139,8 @@ class MarkupTwitterFeed extends WireData implements Module, ConfigurableModule, 
 		$params = array(
 			'exclude_replies' => !$options['showReplies'], 
 			'include_rts' => $options['showRetweets'], 
-			'trim_user' => true, // exclude user details, which we don't use
+			'trim_user' => ! $options['showRetweets'], // we need user details only for retweets
+			'tweet_mode' => 'extended',
 			);
 
 		if(!empty($options['screenName'])) $params['screen_name'] = $options['screenName'];
@@ -251,43 +257,198 @@ class MarkupTwitterFeed extends WireData implements Module, ConfigurableModule, 
 		
 		$options = array_merge($this->options, $options); 
 		
-		$text = $item['text'];
+		$isRetweet = isset($item['retweeted']) && $item['retweeted'];
+		if ($isRetweet and isset($item['retweeted_status'])) {
+			$item = $item['retweeted_status'];
+		}
+		
+		$text = $item['full_text'] ?: $item['text'];
 		if(!$options['showHashTags']) $text = preg_replace('/\#([^\s]+|$)\s*/', '', $text); 
 		if(!$options['showAtTags']) $text = preg_replace('/@([^\s]+|$)\s*/', '', $text); 
-
+		
 		$text = html_entity_decode($text, ENT_QUOTES, 'UTF-8'); 
 		$text = wire('sanitizer')->entities($text); 
-
+		
+		$text = $this->encodeEmojis($text);
+		
+		if ($options['preserveLineBreaks'] === true) {
+			$text = str_replace("\n", '<br>', $text);
+		}
+		elseif ($options['preserveLineBreaks'] === 'coalesce') {
+			$text = preg_replace('/\n+/', '<br>', $text);
+		}
+		
 		foreach($item['entities']['urls'] as $u) {
 			if($options['linkUrls']) {
-				$linkOpen = str_replace('{href}', wire('sanitizer')->entities($u['expanded_url']), $options['listItemLinkOpen']); 
-				$text = preg_replace('!' . preg_quote($u['url'], '!') . '(\b|$)!i', $linkOpen . $u['display_url'] . $options['listItemLinkClose'], $text); 
+				$linkHtml = str_replace(['{href}', '{url}'], [wire('sanitizer')->entities($u['expanded_url']), $u['display_url']], $options['listItemLink']); 
+				$text = preg_replace('!' . preg_quote($u['url'], '!') . '(\b|$)!i', $linkHtml, $text); 
 			} else {
 				$text = preg_replace('!' . preg_quote($u['url'], '!') . '(\b|$)!i', $u['display_url'], $text); 
 			}
 		
 		}
+		
+		if (isset($item['extended_entities']) && isset($item['extended_entities']['media'])) {
+			
+			$mediaUrlField = wire('config')->https ? 'media_url_https' : 'media_url';
+			
+			foreach($item['extended_entities']['media'] as $m) {
+				
+				if (($m['type'] == 'photo') && $options['listItemPhoto'])
+				{
+					$photoHtml = str_replace(array('{src}', '{title}'), 
+											 array(wire('sanitizer')->entities($m[$mediaUrlField]), wire('sanitizer')->entities($m['display_url'])), 
+											 $options['listItemPhoto']); 
+					$text = preg_replace('!' . preg_quote($m['url'], '!') . '(\b|$)!i', $photoHtml, $text); 
+				}
+				elseif (($m['type'] == 'video') && $options['listItemVideo']) {
+					
+					$posterUrl = wire('sanitizer')->entities($m[$mediaUrlField]);
+					
+					// Get the aspect ratio
+					$aspectRatioArray = $m['video_info']['aspect_ratio'];
+					if (! $aspectRatioArray) $aspectRatioArray = [16, 9];
+					$aspectRatio = intval($aspectRatioArray[1] / $aspectRatioArray[0] * 1000) / 10;
+					
+					// get the video sources
+					$videoSourcesHtml = "";
+					$videoSources = array();
+					foreach ($m['video_info']['variants'] as $variant) {
+						
+						$contentType = wire('sanitizer')->entities($variant['content_type']);
+						
+						if (! isset($variant['bitrate'])) {
+							// adaptative streming format: put first in video sources
+							$contentUrl = wire('sanitizer')->entities($variant['url']);
+							$videoSourcesHtml .= "<source src='$contentUrl' type='$contentType'>";
+						}
+						else {
+							// Fixed bitrate: select the highest quality (!)
+							if (! isset($videoSources[$contentType]) || ($videoSources[$contentType]['bitrate'] < $variant['bitrate'])) {
+								$videoSources[$contentType] = $variant;
+							}
+						}
+					}
+					foreach ($videoSources as $contentType => $variant) {
+						$contentUrl = wire('sanitizer')->entities($variant['url']);
+						$videoSourcesHtml .= "<source src='$contentUrl' type='$contentType'>";
+					}
+					
+					$videoAttributes = 'controls';
+					if (isset($options['videoAttributes'])) {
+						$videoAttributes .= ' ' . $options['videoAttributes'];
+					}
+					
+					$videoDivHtml = <<<"VIDEO_MEDIA_HTML"
+									<div class='html-video-box'>	
+										<div class='padding' style='padding-top:{$aspectRatio}%;'></div>
+										<video {$videoAttributes} poster='$posterUrl'>
+											{$videoSourcesHtml}
+											<div class='html-video-fallback'>
+												<img src='{$posterUrl}' alt='This video can not be played in your web browser...'>
+											</div>
+										</video>
+									</div>
+VIDEO_MEDIA_HTML;
 
-		$out = $options['listItemOpen'];
+					$videoHtml = str_replace('{video_tag}', $videoDivHtml, $options['listItemVideo']);
+					$text = preg_replace('!' . preg_quote($m['url'], '!') . '(\b|$)!i', $videoHtml, $text); 
+				}
+				else {
+					// Hide the media URL
+					$text = preg_replace('!' . preg_quote($m['url'], '!') . '(\b|$)!i', '', $text); 
+				}
+			}
+		}
 
+		elseif (isset($item['entities']) && isset($item['entities']['media'])) {
+			
+			$mediaUrlField = wire('config')->https ? 'media_url_https' : 'media_url';
+			
+			foreach($item['entities']['media'] as $m) {
+				if($options['listItemPhoto']) {
+					$photoHtml = str_replace(array('{src}', '{title}'), 
+											 array(wire('sanitizer')->entities($m[$mediaUrlField]), wire('sanitizer')->entities($m['display_url'])), 
+											 $options['listItemPhoto']); 
+					$text = preg_replace('!' . preg_quote($m['url'], '!') . '(\b|$)!i', $photoHtml, $text); 
+				} else {
+					// Hide the media URL
+					$text = preg_replace('!' . preg_quote($m['url'], '!') . '(\b|$)!i', '', $text); 
+				}
+			
+			}
+		}
+		
 		if($options['showDate']) {
 			$date = strtotime($item['created_at']);
 			if($options['dateFormat'] == 'relative') $date = wireRelativeTimeStr($date);
 				else if(strpos($options['dateFormat'], '%') !== false) $date = strftime($options['dateFormat'], $date); 
 				else $date = date($options['dateFormat'], $date);
-			$dateOut = $options['listItemDateOpen'] . $date . $options['listItemDateClose']; 
-			if($options['showDate'] == 'before') {
-				$out .= $dateOut; 
-				$dateOut = '';
-			}
+			$dateOut = str_replace('{date}', $date, $options['listItemDate']); 
 		} else $dateOut = '';
 
-		$out .= $text; 
-		if($dateOut) $out .= $dateOut; 
+		$out = $options['listItemOpen'];
+
+		if(strpos($options['showDate'], 'before') !== false) {
+			$out .= $dateOut;
+		}
+		
+		if (!$isRetweet) {
+			$out .= str_replace('{text}', $text, $options['listItemText']);
+		} 
+		else {
+			$tweetAuthorScreenName = $item['user']['screen_name'];
+			$tweetAuthorImageUrl = $item['user']['profile_image_url_https'];
+			$out .= str_replace(array('{text}', '{author}', '{author_icon_url}'), array($text, $tweetAuthorScreenName, $tweetAuthorImageUrl), $options['listItemRetweetText']);
+		}
+		
+		if(strpos($options['showDate'], 'after') !== false) {
+			$out .= $dateOut;
+		}
+		 
 		$out .= $options['listItemClose']; 
 
 		return $out; 
 	}
+
+	/**
+	 * Html-encode emojis in the item text
+	 * (origin: http://wp-a2z.com/oik_api/wp_encode_emoji/)
+	 *
+	 */
+	 private function encodeEmojis( $content ) {
+	   if ( function_exists( 'mb_convert_encoding' ) ) {
+	 	$regex = '/(
+	 			 \x23\xE2\x83\xA3               # Digits
+	 			 [\x30-\x39]\xE2\x83\xA3
+	 		   | \xF0\x9F[\x85-\x88][\xA6-\xBF] # Enclosed characters
+	 		   | \xF0\x9F[\x8C-\x97][\x80-\xBF] # Misc
+	 		   | \xF0\x9F\x98[\x80-\xBF]        # Smilies
+	 		   | \xF0\x9F\x99[\x80-\x8F]
+	 		   | \xF0\x9F\x9A[\x80-\xBF]        # Transport and map symbols
+	 		)/x';
+	 
+	 	$matches = array();
+	 	if ( preg_match_all( $regex, $content, $matches ) ) {
+	 	  if ( ! empty( $matches[1] ) ) {
+	 		foreach( $matches[1] as $emoji ) {
+	 		   /*
+	 			* UTF-32's hex encoding is the same as HTML's hex encoding.
+	 			* So, by converting the emoji from UTF-8 to UTF-32, we magically
+	 			* get the correct hex encoding.
+	 			*/
+	 		  $unpacked = unpack( 'H*', mb_convert_encoding( $emoji, 'UTF-32', 'UTF-8' ) );
+	 		  if ( isset( $unpacked[1] ) ) {
+	 			$entity = '&#x' . ltrim( $unpacked[1], '0' ) . ';';
+	 			$content = str_replace( $emoji, $entity, $content );
+	 		  }
+	 		}
+	 	  }
+	 	}
+	   }
+	 
+	   return $content;
+	 }
 
 	/**
 	 * Configure the module
