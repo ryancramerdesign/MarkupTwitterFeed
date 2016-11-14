@@ -41,76 +41,86 @@ existing code if you do not want to, as this module will detect and ignore old s
 ## Usage
 
 **Basic example:**
-```
-$t = $modules->get('MarkupTwitterFeed'); 
-echo $t->render(); 
-```
+
+    $t = $modules->get('MarkupTwitterFeed'); 
+    echo $t->render(); 
 
 **Specifying options example:**
-```
-$options = array(
-  'limit' => 3, 
-  'cacheSeconds' => 600, // 10 minutes
-  'showDate' => 'before'
-  ); 
-$t = $modules->get('MarkupTwitterFeed'); 
-echo $t->render($options);
-```
+
+    $options = array(
+      'limit' => 3, 
+      'cacheSeconds' => 600, // 10 minutes
+      'showDate' => 'before'
+      ); 
+    $t = $modules->get('MarkupTwitterFeed'); 
+    echo $t->render($options);
 
 **If preferred, you can specify options individually before calling render:**
-```
-$t = $modules->get('MarkupTwitterFeed'); 
-$t->limit = 3; 
-$t->cacheSeconds = 600; 
-$t->showDate = 'before';
-echo $t->render();
-```
 
-**Or you can iterate the feed rather to generate your own markup...**
-Note that when doing this, all of the $options that modify output are no longer applicable, 
-as you will be given the data exactly as it is from Twitter. This will likely change in the
-next version. But for now, if you take this route, you should avoid setting any options that
-would affect the output, so that you will not be affected by changes in the next version.
-```
-$t = $modules->get('MarkupTwitterFeed');
-$t->limit = 3; 
-foreach($t as $item) {
-  echo "<p>$item[text]<br /><span class='date'>$item[created_at]</span></p>";
-}
-```
+    $t = $modules->get('MarkupTwitterFeed'); 
+    $t->limit = 3; 
+    $t->cacheSeconds = 600; 
+    $t->showDate = 'before';
+    echo $t->render();
+
+
+**Or you can iterate the feed rather to generate your own markup...**  
+Note that when doing this, $options that modify output shall be passed to the `renderItem` method. 
+
+    $t = $modules->get('MarkupTwitterFeed');
+    $t->limit = 10; 
+    
+    $renderOptions = array(
+        'showDate' => 'before, after',
+        'dateFormat' => __("M j, Y"), // Tweet block date format
+        'listItemOpen' => "\n\t<div class='tweet-item'>",
+        'listItemClose' => "</div>",
+        'listItemText' => "<i class='fa fa-twitter'></i> <span class='tweet-text'>{text}</span>",
+        'listItemDate' => " <div class='date'><i class='fa fa-calendar'></i> {date}</div>", 
+        'listItemLink' => "<a rel='nofollow' href='{href}'>{url}</a>", 
+        'videoAttributes' => "autoplay loop muted",
+        'preserveLineBreaks' => 'coalesce',
+    );
+    
+    foreach($t as $tweet) {
+      echo $t->renderItem($tweet, $renderOptions);
+    }
 
 ## All available options
 
 Default values are shown below. 
 
-```
-$t->limit = 3;                  // max items to show
-$t->cacheSeconds = 3600;        // seconds to cache the feed (3600 = 1 hour)*
-$t->dateFormat = 'F j g:i a';   // PHP date() or strftime() format for date field: December 4, 2013 1:17 pm
-$t->dateFormat = 'relative';	// Displays relative time, i.e. "10 minutes ago", etc. 
-$t->linkUrls = true;            // should URLs be linked?
-$t->showHashTags = true;        // show hash tags in the tweets?
-$t->showAtTags = true;          // show @user tags in the tweets?
-$t->showDate = 'after';         // show date/time: 'before', 'after', or blank to disable.
-$t->showReplies = false;        // show Twitter @replies in timeline?
-$t->showRetweets = false;       // show Twitter retweets in timeline?
-$t->timeline = 'user_timeline'; // what timeline to show: mentions_timeline, user_timeline, home_timeline or retweets_of_me
-$t->screenName = '';            // screen name to return results for (default=blank, Twitter default)
-$t->consumerKey = '';           // Twitter API consumer key*
-$t->consumerSecret = '';        // Twitter API consumer secret*
-$t->userToken = '';             // Twitter API access/user token*
-$t->userSecret = '';            // Twitter API access/user secret*
-
-// generated markup options:
-$t->listOpen = "<ul class='MarkupTwitterFeed'>";
-$t->listClose = "</ul>";
-$t->listItemOpen = "<li>";
-$t->listItemClose = "</li>";
-$t->listItemDateOpen = "<span class='date'>";
-$t->listItemDateClose = "</span>";
-$t->listItemLinkOpen = "<a href='{href}'>";
-$t->listItemLinkClose = "</a>";
-```
+    $t->limit = 3;                  // max items to show
+    $t->cacheSeconds = 3600;        // seconds to cache the feed (3600 = 1 hour)*
+    $t->dateFormat = 'F j g:i a';   // PHP date() or strftime() format for date field: December 4, 2013 1:17 pm
+    $t->dateFormat = 'relative';	// Displays relative time, i.e. "10 minutes ago", etc. 
+    $t->linkUrls = true;            // should URLs be linked?
+    $t->showHashTags = true;        // show hash tags in the tweets?
+    $t->showAtTags = true;          // show @user tags in the tweets?
+    $t->showDate = 'after';         // show date/time: 'before', 'after', or blank to disable.
+    $t->showReplies = false;        // show Twitter @replies in timeline?
+    $t->showRetweets = false;       // show Twitter retweets in timeline?
+    $t->timeline = 'user_timeline'; // what timeline to show: mentions_timeline, user_timeline, home_timeline or retweets_of_me
+    $t->screenName = '';            // screen name to return results for (default=blank, Twitter default)
+    $t->consumerKey = '';           // Twitter API consumer key*
+    $t->consumerSecret = '';        // Twitter API consumer secret*
+    $t->userToken = '';             // Twitter API access/user token*
+    $t->userSecret = '';            // Twitter API access/user secret*
+    
+    // generated markup options:
+    $t->listOpen = "<ul class='MarkupTwitterFeed'>";
+    $t->listClose = "</ul>";
+    $t->listItemOpen = "<li>";
+    $t->listItemClose = "</li>";
+    $t->listItemText = "{text}";
+    $t->listItemDate = " <span class='date'>{date}</span>";
+    $t->listItemLink = "<a rel='nofollow' href='{href}'>{url}</a>";
+    $t->listItemPhoto = "<img src='{src}' title='{title}'>";
+    $t->listItemVideo = "{video_tag}";
+    $t->listItemRetweetText = "<i class='fa fa-retweet'></i> <span class='tweet-author'><img src='{author_icon_url}'>@{author}</span> <div class='tweet-text'>{text}</div>";
+    
+    $t->videoAttributes = "autoplay loop muted",
+    $t->preserveLineBreaks = true;
 
 *\*Note that the default value of these options is configured from the MarkupTwitterFeed module settings screen.*
 
