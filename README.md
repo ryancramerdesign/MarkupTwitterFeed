@@ -9,8 +9,8 @@ This library is included with the MarkupTwitterFeed module files.
 
 ## Requirements
 
-- ProcessWire 2.3 or newer
-- PHP 5.3 or newer 
+- ProcessWire 3.0 or newer
+- PHP 5.3 or newer (7.x+ recommended)
 - PHP must have CURL and hash_hmac support (already present in most hosting environments)
 
 ## To Install
